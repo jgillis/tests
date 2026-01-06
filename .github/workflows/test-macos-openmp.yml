@@ -18,13 +18,51 @@ jobs:
 
     - name: Display compiler info
       run: |
+        echo "=== System gcc (actually clang) ==="
         gcc --version
         which gcc
+        echo ""
+        echo "=== Checking for OpenMP libraries ==="
+        brew list | grep -i omp || echo "No OpenMP libs found"
 
-    - name: Compile OpenMP hello world
+    - name: Experiment 1 - Try naive gcc with -fopenmp
+      continue-on-error: true
       run: |
-        gcc -fopenmp hello_openmp.c -o hello_openmp
+        echo "Attempting: gcc -fopenmp hello_openmp.c -o hello_openmp"
+        gcc -fopenmp hello_openmp.c -o hello_openmp && ./hello_openmp
 
-    - name: Run the compiled program
+    - name: Experiment 2 - Install libomp and use Xpreprocessor flags
       run: |
-        ./hello_openmp
+        echo "Installing libomp via Homebrew..."
+        brew install libomp
+        echo ""
+        echo "Attempting: gcc -Xpreprocessor -fopenmp -lomp"
+        gcc -Xpreprocessor -fopenmp -lomp hello_openmp.c -o hello_openmp_exp2
+        ./hello_openmp_exp2
+
+    - name: Experiment 3 - Use explicit Homebrew libomp paths
+      run: |
+        echo "Setting up paths for libomp..."
+        LIBOMP_PREFIX=$(brew --prefix libomp)
+        echo "libomp location: $LIBOMP_PREFIX"
+        echo ""
+        echo "Attempting: gcc with explicit -I and -L flags"
+        gcc -Xpreprocessor -fopenmp -I${LIBOMP_PREFIX}/include -L${LIBOMP_PREFIX}/lib -lomp hello_openmp.c -o hello_openmp_exp3
+        ./hello_openmp_exp3
+
+    - name: Experiment 4 - Install and use Homebrew GCC
+      run: |
+        echo "Installing Homebrew gcc..."
+        brew install gcc
+        GCC_BIN=$(brew --prefix gcc)/bin/gcc-$(brew list --versions gcc | grep -oE '[0-9]+' | head -1)
+        echo "Found GCC at: $GCC_BIN"
+        $GCC_BIN --version
+        echo ""
+        echo "Attempting: Homebrew gcc with -fopenmp"
+        $GCC_BIN -fopenmp hello_openmp.c -o hello_openmp_exp4
+        ./hello_openmp_exp4
+
+    - name: Summary
+      run: |
+        echo "=== Compilation Results ==="
+        ls -lh hello_openmp* 2>/dev/null || echo "No binaries found"
