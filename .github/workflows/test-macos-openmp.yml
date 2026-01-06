@@ -1,0 +1,30 @@
+name: Test macOS OpenMP
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-openmp:
+    strategy:
+      matrix:
+        os: [macos-14, macos-15-intel]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Display compiler info
+      run: |
+        gcc --version
+        which gcc
+
+    - name: Compile OpenMP hello world
+      run: |
+        gcc -fopenmp hello_openmp.c -o hello_openmp
+
+    - name: Run the compiled program
+      run: |
+        ./hello_openmp
